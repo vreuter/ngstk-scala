@@ -15,7 +15,8 @@ object AddReadGroups extends StrictLogging {
     bamFolder: File = new File(""), 
     inBamExt: String = ".unique.bam", 
     outBamExt: String = ".grouped.bam", 
-    metadataDelimiter: String = "\t"
+    metadataDelimiter: String = "\t", 
+    overwrite: Boolean = false
   )
   
   def main(args: Array[String]): Unit = {
@@ -42,6 +43,9 @@ object AddReadGroups extends StrictLogging {
       opt[String]("outBamExt")
         .action((ext, c) => c.copy(outBamExt = ext))
         .text("Extension of BAM file to write")
+      opt[Unit]("overwrite")
+        .action((_, c) => c.copy(overwrite = true))
+        .text("Overwrite any existing output file")
     }
     parser.parse(args, Config()).fold(
       throw new Exception("Illegal program usage")){ conf => {
@@ -59,14 +63,44 @@ object AddReadGroups extends StrictLogging {
         logger.info("Starting RG addition.")
         val rawResults = inBams.zip(outBams).foldLeft(Vector.empty[Either[String, File]]){
           case (acc, (inBam, outBam)) => {
-            logger.info(s"Processing: $inBam")
-            val tmpRes = addReadGroup(rgBlockBySample)(inBam, outBam)
-            tmpRes.fold( msg => logger.warn(msg), out => {
-              if (out =!= outBam) {
-                throw new Exception(s"Output and target differ; target=$outBam; output=$out")
-              } else { logger.info(s"Wrote: $out") }
-            } )
-            acc :+ tmpRes
+            val lockFile = new File(s"${outBam}.lock")
+            val doAddRG = (lockFile.isFile -> outBam.isFile) match {
+              case (false, false) => true
+              case (false, true) => {
+                if (conf.overwrite) {
+                  logger.info(s"Overwriting target: $outBam")
+                  outBam.delete()
+                  true
+                }
+                else { logger.info(s"Target exists, skipping: $outBam"); false }
+              }
+              case (true, false) => {
+                logger.warn(s"Lock file exists but target ($outBam) doesn't; removing lock: $lockFile")
+                lockFile.delete()
+                true
+              }
+              case (true, true) => {
+                logger.info(s"Target ($outBam) exists but so does lock ($lockFile); replacing")
+                lockFile.delete()
+                outBam.delete()
+                true
+              }
+            }
+            val currentResult = if (doAddRG) {
+              logger.info(s"Processing: $inBam")
+              lockFile.createNewFile()
+              val tmpRes = addReadGroup(rgBlockBySample)(inBam, outBam)
+              tmpRes.fold( msg => logger.warn(msg), out => {
+                if (out =!= outBam) throw new Exception(s"Output and target differ; target=$outBam; output=$out")
+                if (!out.isFile) throw new Exception(s"Target wasn't created: $out")
+                else {
+                  lockFile.delete()
+                  logger.info(s"Wrote: $out")
+                }
+              } )
+              tmpRes
+            } else { Left[String, File]("Skipped RG addition attempt") }
+            acc :+ currentResult
           }
         }
         val (_, outfiles) = {
