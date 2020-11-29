@@ -2,6 +2,7 @@ package ngstk
 
 import java.io.File
 import htsjdk.samtools.{ SAMReadGroupRecord }
+import com.typesafe.scalalogging.LazyLogging
 import RGAttributes._
 
 final case class ReadGroupData(flow: Flowcell, lane: Lane, platform: PlatformName, sample: SampleName, lib: LibId) {
@@ -24,7 +25,7 @@ final case class ReadGroupData(flow: Flowcell, lane: Lane, platform: PlatformNam
   }
 }
 
-object ReadGroupData {
+object ReadGroupData extends LazyLogging {
 
   def defineReadGroups(
     sampleReads: List[MetadataColumnParser], 
@@ -48,14 +49,21 @@ object ReadGroupData {
     val flowAndLaneBySample: Map[SampleName, List[(Flowcell, Lane)]] = 
       goods.groupBy(_._1).view.mapValues(_.map(tup => tup._2 -> tup._3).sortBy(_._2)).toMap
     implicit val ordSampleName: Ordering[SampleName] = Order.by((_: SampleName).get).toOrdering
-    boundMeta.fold(err => throw new Exception(err), bound => {
+    boundMeta.fold( err => throw new Exception(err), bound => {
       flowAndLaneBySample.toList.sortBy(_._1).foldRight(List.empty[(SampleName, List[ReadGroupData])]){
-        case ((sn, flowLanePairs), acc) => (sn, flowLanePairs map { case (flow, lane) => {
-          val (platName, libId) = bound(sn)
-          ReadGroupData(flow, lane, platName, sn, libId)
-        } } ) :: acc
+        case ((sn, flowLanePairs), acc) => {
+          try {
+            val (platName, libId) = bound(sn)
+            val rgDatas = flowLanePairs map { case (flow, lane) => ReadGroupData(flow, lane, platName, sn, libId) }
+            (sn, rgDatas) :: acc
+          }
+          catch { case e: NoSuchElementException => {
+            logger.warn(s"Sample name isn't bound to platform/ID: ${sn.get}")
+            acc
+          } }
+        }
       }
-    })
+    } )
   }
 
 }
