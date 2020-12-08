@@ -63,9 +63,11 @@ These are assumptions that I made in initially writing this program, and/or trai
 
 
 ## Future directions
-- Support the filesystem layout that's more common for sequencing run data stored on Kim Lab cluster. Specifically, allow FASTQ and BAM files to be distributed among individual folders (per-sample organization) rather than aggregated into a single folder and distinguished by filename-to-sample-name correspondence (per-data-type organization).
-- Support generation, and possibly execution, of downstream commands for common things that would want read group info, e.g. `gatk MarkDuplicatesSpark` --> `SetNmMdAndUqTags` --> base quality score recalibration (BQSR).
+- Add [read group intermediate checkpoint](https://github.com/vreuter/ngstk-scala/issues/3) that a user could toggle to indicate that they want to see the read group data that would be added, before committing to to the time-intensive BAM iteration and file I/O operations.
+- Support the [filesystem layout](https://github.com/vreuter/ngstk-scala/issues/4) that's more common for sequencing run data stored on Kim Lab cluster. Specifically, allow FASTQ and BAM files to be distributed among individual folders (per-sample organization) rather than aggregated into a single folder and distinguished by filename-to-sample-name correspondence (per-data-type organization).
+- Support generation, and possibly execution, of [downstream commands](https://github.com/vreuter/ngstk-scala/issues/2) for common things that would want read group info, e.g. `gatk MarkDuplicatesSpark` --> `SetNmMdAndUqTags` --> base quality score recalibration (BQSR).
 ### More flexibility via parameterization
 - Support more flexible sample name inference from filenames
 - More flexibility and testing of specification of which column names from sample sheet are relevant
+
 
