@@ -21,7 +21,7 @@ object AddReadGroups extends StrictLogging {
   
   def main(args: Array[String]): Unit = {
     val parser = new OptionParser[Config](BuildInfo.name) {
-      head(BuildInfo.name, s"${BuildInfo.version}")
+      head(s"${BuildInfo.name}.AddReadGroups", s"${BuildInfo.version}")
       opt[File]('M', "metadataFile")
         .required()
         .action((f, c) => c.copy(metadataFile = f))

@@ -1,6 +1,6 @@
 name := "ngstk"
 version := "0.0.1-SNAPSHOT"
-scalaVersion := "2.13.2"
+scalaVersion := "2.13.4"
 organization := "vreuter"
 
 assemblyJarName in assembly := s"${name.value}_v${version.value}.jar"
