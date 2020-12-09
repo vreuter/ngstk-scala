@@ -30,7 +30,7 @@ object MetadataColumnParser {
 
   def attemptSampleSheetRead(parsers: List[MetadataColumnParser])(f: File, sep: String): Either[String, List[String]] = {
     import scala.annotation.tailrec
-    val (header, dataLines) = Source.fromFile(f).getLines.map(_.split(sep)).toList match {
+    val (header, dataLines) = Source.fromFile(f).getLines().map(_.split(sep)).toList match {
       case h :: t => h.toList -> t
       case Nil => throw new Exception(s"No lines: $f")
     }
