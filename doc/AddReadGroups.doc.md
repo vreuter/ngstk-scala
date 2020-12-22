@@ -3,7 +3,7 @@
 ## Example
 **Command**:
 ```
-java -jar $NGSTK ngstk.AddReadGroups -M /path/to/sample-sheet.tsv -F /path/to/fastqs -B /path/to/bams
+java -cp $NGSTK ngstk.AddReadGroups -M /path/to/sample-sheet.tsv -F /path/to/fastqs -B /path/to/bams
 ```
 **Breakdown**:
 - `java` to fire up the JVM and run the program
