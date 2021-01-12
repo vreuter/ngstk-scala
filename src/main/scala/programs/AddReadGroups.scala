@@ -2,8 +2,13 @@ package ngstk
 
 import com.typesafe.scalalogging.StrictLogging
 
+/**
+ * Add read groups to BAM header and records, based on project metadata.
+ *
+ * @author Vince Reuter
+ */
 object AddReadGroups extends StrictLogging {
-  import java.io.File
+  import java.io.{ BufferedWriter, File, FileWriter }
   import cats.Eq, cats.instances.string._, cats.syntax.eq._
   import scopt._
   import RGAttributes._
@@ -16,7 +21,8 @@ object AddReadGroups extends StrictLogging {
     inBamExt: String = ".unique.bam", 
     outBamExt: String = ".grouped.bam", 
     metadataDelimiter: String = "\t", 
-    overwrite: Boolean = false
+    overwrite: Boolean = false, 
+    sampleSheetResult: File = new File("")
   )
   
   def main(args: Array[String]): Unit = {
@@ -46,6 +52,9 @@ object AddReadGroups extends StrictLogging {
       opt[Unit]("overwrite")
         .action((_, c) => c.copy(overwrite = true))
         .text("Overwrite any existing output file")
+      opt[File]("outputSheetFile")
+        .action((f, c) => c.copy(sampleSheetResult = f))
+        .text("Path to output sample sheet to write, if desired")
     }
     parser.parse(args, Config()).fold(
       throw new Exception("Illegal program usage")){ conf => {
@@ -61,7 +70,7 @@ object AddReadGroups extends StrictLogging {
         val outBams = inBams.map(f => new File(f.getPath.replace(".bam", conf.outBamExt)))
         implicit val eqFile: Eq[File] = Eq.by(_.getPath)
         logger.info("Starting RG addition.")
-        val rawResults = inBams.zip(outBams).foldLeft(Vector.empty[Either[String, File]]){
+        val rawResults = inBams.zip(outBams).foldLeft(Vector.empty[Either[String, (SampleName, File)]]){
           case (acc, (inBam, outBam)) => {
             val lockFile = new File(s"${outBam}.lock")
             val doAddRG = (lockFile.isFile -> outBam.isFile) match {
@@ -89,25 +98,40 @@ object AddReadGroups extends StrictLogging {
             val currentResult = if (doAddRG) {
               logger.info(s"Processing: $inBam")
               lockFile.createNewFile()
-              val tmpRes = addReadGroup(rgBlockBySample)(inBam, outBam)
-              tmpRes.fold( msg => logger.warn(msg), out => {
+              val tmpRes: Either[String, (SampleName, File)] = addReadGroup(rgBlockBySample)(inBam, outBam)
+              tmpRes.fold( msg => logger.warn(msg), { case (name, out) => {
                 if (out =!= outBam) throw new Exception(s"Output and target differ; target=$outBam; output=$out")
                 if (!out.isFile) throw new Exception(s"Target wasn't created: $out")
                 else {
                   lockFile.delete()
                   logger.info(s"Wrote: $out")
                 }
-              } )
+              } } )
               tmpRes
-            } else { Left[String, File]("Skipped RG addition attempt") }
+            } else { Left[String, (SampleName, File)]("Skipped RG addition attempt") }
             acc :+ currentResult
           }
         }
-        val (_, outfiles) = {
+        val (_, nameOutFilePairs) = {
           import cats.Alternative, cats.instances.either._, cats.instances.list._
           Alternative[List].separate(rawResults.toList)
         }
-        logger.info(s"Output files: ${outfiles.map(_.getName).mkString(", ")}")
+        logger.info(s"Output files: ${nameOutFilePairs.map(_._2.getName).mkString(", ")}")
+        if (conf.sampleSheetResult.getName === "") { logger.debug("No output sample sheet") }
+        else {
+          val sampleSheetFile = new File(conf.bamFolder, "grouped_sample_sheet.txt")
+          logger.info(s"Writing sample sheet: ${conf.sampleSheetResult}")
+          val writer = new BufferedWriter(new FileWriter(conf.sampleSheetResult))
+          try {
+            writer.write(s"sample_name\tgrouped_file")
+            writer.newLine()
+            nameOutFilePairs foreach { case (name, file) => {
+              writer.write(s"${name.get}\t$file")
+              writer.newLine()
+            } }
+          }
+          finally { writer.close() }
+        }
         logger.info("Done.")
     }}
   }
