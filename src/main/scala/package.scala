@@ -50,7 +50,7 @@ package object ngstk {
       rg => { read.setAttribute("RG", rg.getId); read } }
   }
 
-  def addReadGroup(rgBlockBySample: Map[SampleName, RGBlock])(inBam: File, outBam: File): Either[String, File] = {
+  def addReadGroup(rgBlockBySample: Map[SampleName, RGBlock])(inBam: File, outBam: File): Either[String, (SampleName, File)] = {
     import scala.collection.JavaConverters._
     import cats.syntax.eq._
     implicit val eqFile: Eq[File] = Eq.by(_.getPath)
@@ -68,7 +68,7 @@ package object ngstk {
       val reader = SamReaderFactory.makeDefault().open(inBam)
       val iter: SAMRecordIterator = reader.iterator()
       val writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(outHeader, false, outBam)
-      var result: Either[String, File] = Right(outBam)
+      var result: Either[String, (SampleName, File)] = Right(currName -> outBam)
       while (iter.hasNext && result.isRight) {
         result = tryAddReadGroupToRead(iter.next())(keyedBlock) match {
           case Left(err) => { print("Should halt!"); Left(err) }
