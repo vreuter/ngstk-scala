@@ -15,8 +15,8 @@ libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
 libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
 
 /* Core abstractions */
-libraryDependencies += "org.typelevel" %% "cats-core" % "2.3.0"
-libraryDependencies += "org.typelevel" %% "mouse" % "0.25"
+libraryDependencies += "org.typelevel" %% "cats-core" % "2.4.2"
+libraryDependencies += "org.typelevel" %% "mouse" % "1.0.0"
 
 /* Java and compiler options */
 scalacOptions ++= Seq("-deprecation", "-feature", "-language:higherKinds")//pre-2.13, "-Ypartial-unification")
