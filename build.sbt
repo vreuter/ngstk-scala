@@ -1,8 +1,9 @@
+name := "ngstk"
+
 lazy val scala213 = "2.13.5"
 lazy val scala212 = "2.12.10"
 lazy val supportedScalaVersions = List(scala213, scala212)
 
-ThisBuild / name := "ngstk"
 ThisBuild / version := "0.0.4-SNAPSHOT"
 ThisBuild / scalaVersion := scala213
 ThisBuild / organization := "vreuter"
