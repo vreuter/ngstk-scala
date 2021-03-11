@@ -10,7 +10,7 @@ package ngstk
  */
 object Intersection {
 
-  import scala.collection.IterableOps  
+  //import scala.collection.IterableOps  
   import htsjdk.samtools.{ SAMRecord, SAMRecordIterator }
 
   private[this] type Tally = Map[Int, Int]
@@ -31,7 +31,7 @@ object Intersection {
    * @return Collection of input elements for which the coordinate/position is "within" the read {@code r}, 
    *         as determined by the read's alignment start and end position; BEWARE OF SPLIT READS
    */
-  def byCoordinateThroughRead[A, CC[_]](sites: IterableOps[(Int, A), CC, CC[(Int, A)]])(r: SAMRecord): CC[(Int, A)] = {
+  def byCoordinateThroughRead[A](sites: List[(Int, A)])(r: SAMRecord): List[(Int, A)] = {
     sites.filter(posAndA => posAndA._1 >= r.getStart && posAndA._1 <= r.getEnd )
   }
 
