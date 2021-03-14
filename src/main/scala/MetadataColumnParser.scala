@@ -28,8 +28,8 @@ object MetadataColumnParser {
     def parseValue: String => String = p => p
   }
 
-  def attemptSampleSheetRead(
-    parsers: List[MetadataColumnParser])(f: File, sep: String): Either[String, List[String]] = {
+  def tryParseMetadata[A](parsers: List[MetadataColumnParser])(
+    f: File, sep: String)(lift: String => A): Either[String, List[A]] = {
     import scala.annotation.tailrec
     val (header, dataLines) = Source.fromFile(f).getLines().map(_.split(sep)).toList match {
       case h :: t => h.toList -> t
@@ -45,12 +45,7 @@ object MetadataColumnParser {
         }
       }
     }
-    go(parsers)
+    go(parsers).map(_.map(lift))
   }
-
-  def tryParseMetadata[A](
-    parsers: List[MetadataColumnParser])(
-    f: File, sep: String)(lift: String => A): Either[String, List[A]] = 
-    attemptSampleSheetRead(parsers)(f, sep).map(_.map(lift))
 
 }

@@ -18,10 +18,10 @@ package object ngstk {
   def defaultDefineReadGroups(
     metaFile: File, fastqFolder: File, 
     sep: String = "\t"): List[(SampleName, List[ReadGroupData])] = {
-    ReadGroupData.defineReadGroups(
-      sampleReads = List(MetadataColumnParser.basicParse("Sample Name")), 
-      platReads = List(MetadataColumnParser.basicParse("Machine Manufacturer")), 
-      libReads = List(MetadataColumnParser.basicParse("BarcodeIdx")))(
+    ReadGroupData.defineReadGroups(    // go with named args here since types are the same.
+      sampleParsers = List(MetadataColumnParser.basicParse("Sample Name")), 
+      platformParsers = List(MetadataColumnParser.basicParse("Machine Manufacturer")), 
+      libraryParsers = List(MetadataColumnParser.basicParse("BarcodeIdx")))(
         metadata = metaFile, sep = sep)(
           fastqFolder = fastqFolder, 
           fqFile2Sample = (f: File) => Right[String, SampleName](fq2Sn(f)) )

@@ -47,20 +47,38 @@ final case class ReadGroupData(flow: Flowcell, lane: Lane, platform: PlatformNam
 object ReadGroupData extends LazyLogging {
 
   /**
-   * 
+   * For each sample parsed from a metadata table / sheet, determine associated read groups.
+   *
+   * This fuction operates on a table-like text file (arbitrarily delimited), and aims to 
+   * parse the minimal metadata set for each sample to fully specify the read groups associated 
+   * with each sample.
+   *
+   * To do so, besides the metadata sheet, the FASTQ files for the batch of samples 
+   * defined by the sheet are necessary, to associate flowcell and lane with each sample. 
+   * It's assumed that the flowcell can be gleaned from the read name, and that the lane can be 
+   * gleaned from the FASTQ filename.
+   *
+   * @param sampleParsers 
+   * @param platformParsers
+   * @param libraryParsers
+   * @param metadata Path to sample table / sheet file
+   * @param sep Delimiter in the sample table / sheet
+   * @param fastqFolder Path to directory with this batch's FASTQ files
+   * @param fqFile2Sample How to attempt to parse sample name from FASTQ filepath
+   * @return List of pairs of sample name and associated bundles of read group identifying data
    */
   def defineReadGroups(
-    sampleReads: List[MetadataColumnParser], 
-    platReads: List[MetadataColumnParser], 
-    libReads: List[MetadataColumnParser])(metadata: File, sep: String)(
+    sampleParsers: List[MetadataColumnParser], 
+    platformParsers: List[MetadataColumnParser], 
+    libraryParsers: List[MetadataColumnParser])(metadata: File, sep: String)(
     fastqFolder: File, fqFile2Sample: File => Either[String, SampleName]): List[(SampleName, List[ReadGroupData])] = {
     import cats.{ Alternative, Order }
     import cats.instances.either._, cats.instances.int._, cats.instances.list._, cats.instances.string._
     
     val boundMeta: Either[String, Map[SampleName, (PlatformName, LibId)]] = for {
-      samples <- MetadataColumnParser.tryParseMetadata(sampleReads)(metadata, sep)(SampleName(_))
-      platforms <- MetadataColumnParser.tryParseMetadata(platReads)(metadata, sep)(PlatformName(_))
-      libraries <- MetadataColumnParser.tryParseMetadata(libReads)(metadata, sep)(LibId(_))
+      samples <- MetadataColumnParser.tryParseMetadata(sampleParsers)(metadata, sep)(SampleName(_))
+      platforms <- MetadataColumnParser.tryParseMetadata(platformParsers)(metadata, sep)(PlatformName(_))
+      libraries <- MetadataColumnParser.tryParseMetadata(libraryParsers)(metadata, sep)(LibId(_))
     } yield bindMetadataToSampleNames(samples, platforms, libraries).toMap
     
     val (bads, goods): (List[String], List[(SampleName, Flowcell, Lane)]) = Alternative[List].separate(
