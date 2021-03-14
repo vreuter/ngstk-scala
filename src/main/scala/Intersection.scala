@@ -10,11 +10,11 @@ package ngstk
  */
 object Intersection {
 
-  //import scala.collection.IterableOps  
   import htsjdk.samtools.{ SAMRecord, SAMRecordIterator }
 
   private[this] type Tally = Map[Int, Int]
   private[this] type TallyPair = (Tally, Tally)
+  private[this] def newTally: Tally = Map.empty[Int, Int]
 
   /**
    * Drag arbitrary, coordinate-paired data "through" a read, retaining only those elements with coordinate "in bounds."
@@ -22,10 +22,9 @@ object Intersection {
    * Note here the coordinate scheme. Per the {@code htskdk} docs, the {@code getStart} and {@code getEnd} methods on 
    * {@code SAMRecord} return 1-based (inclusive) positions, while the coordinate in each {@code sites} element will likely 
    * come from a format like BED, where the cordinates are 0-based left-inclusive. Also BEWARE of the fact that to return 
-   * just the basic {@code Int} type, the star/end methods on {@code SAMRecord} return 0 if there's no alignment.
+   * just the basic {@code Int} type, the {@code start} / {@code end} methods on {@code SAMRecord} return 0 if there's no alignment.
    *
-   * @tparam A The arbirary data type for the piece of data paired with each coordinate / genome position
-   * @tparam CC The collection type constructor ("Collection Constructor")
+   * @tparam A The data type for the item paired with each coordinate / genome position
    * @param sites The collection of pairs genome coordinate and arbitrary datum
    * @param r An aligned sequencing read (e.g., BAM file record)
    * @return Collection of input elements for which the coordinate/position is "within" the read {@code r}, 
@@ -68,7 +67,5 @@ object Intersection {
     }
     talliesBySite.toMap
   }
-
-  private[this] def newTally: Tally = Map.empty[Int, Int]
 
 }
