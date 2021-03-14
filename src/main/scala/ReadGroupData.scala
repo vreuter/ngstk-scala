@@ -5,6 +5,20 @@ import htsjdk.samtools.{ SAMReadGroupRecord }
 import com.typesafe.scalalogging.LazyLogging
 import RGAttributes._
 
+/**
+ * Encapsulation of the minimal data to fully specify a read's read group.
+ *
+ * There's a bit of ambiguity over exactly what 'read group' defines, but this type aims to comply with 
+ * [[https://gatk.broadinstitute.org/hc/en-us/articles/360035890671-Read-groups Broad's GATK specification]].
+ *
+ * @param flow The instrument cell from on which the read / group was sequenced
+ * @param lane The sequencing lane a read / group came from
+ * @param platform The "platform," like instrument makes, used for sequencing, e.g. ILLUMINA or PACBIO
+ * @param sample The name of the sample with which the a read / group is associated
+ * @param lib The library ID
+ * @return A new instance of this data storage class
+ * @author Vince Reuter
+ */
 final case class ReadGroupData(flow: Flowcell, lane: Lane, platform: PlatformName, sample: SampleName, lib: LibId) {
   final def library: LibId = lib
   final def flowcell: Flowcell = flow
@@ -25,19 +39,28 @@ final case class ReadGroupData(flow: Flowcell, lane: Lane, platform: PlatformNam
   }
 }
 
+/**
+ * Helpers for working with read groups and {@code ReadGroupData}
+ *
+ * @author Vince Reuter
+ */
 object ReadGroupData extends LazyLogging {
 
+  /**
+   * 
+   */
   def defineReadGroups(
     sampleReads: List[MetadataColumnParser], 
     platReads: List[MetadataColumnParser], 
     libReads: List[MetadataColumnParser])(metadata: File, sep: String)(
     fastqFolder: File, fqFile2Sample: File => Either[String, SampleName]): List[(SampleName, List[ReadGroupData])] = {
-    import cats.{ Alternative, Order }, cats.instances.either._, cats.instances.int._, cats.instances.list._, cats.instances.string._
+    import cats.{ Alternative, Order }
+    import cats.instances.either._, cats.instances.int._, cats.instances.list._, cats.instances.string._
     
     val boundMeta: Either[String, Map[SampleName, (PlatformName, LibId)]] = for {
-      samples <- MetadataColumnParser.tryParseSampleNames(sampleReads)(metadata, sep)
-      platforms <- MetadataColumnParser.tryParsePlatformNames(platReads)(metadata, sep)
-      libraries <- MetadataColumnParser.tryParseLibraryIds(libReads)(metadata, sep)
+      samples <- MetadataColumnParser.tryParseMetadata(sampleReads)(metadata, sep)(SampleName(_))
+      platforms <- MetadataColumnParser.tryParseMetadata(platReads)(metadata, sep)(PlatformName(_))
+      libraries <- MetadataColumnParser.tryParseMetadata(libReads)(metadata, sep)(LibId(_))
     } yield bindMetadataToSampleNames(samples, platforms, libraries).toMap
     
     val (bads, goods): (List[String], List[(SampleName, Flowcell, Lane)]) = Alternative[List].separate(
